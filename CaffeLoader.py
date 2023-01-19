@@ -114,7 +114,7 @@ class ModelParallel(nn.Module):
         for i, device in enumerate(input_list):
             if str(device).lower() != 'c':
                 if torch.backends.mps.is_available():
-                    device_list_append("mps:" + str(device))
+                    device_list.append("mps:" + str(device))
                 else:
                     device_list.append("cuda:" + str(device))
             else:

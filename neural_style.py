@@ -41,7 +41,7 @@ parser.add_argument("-original_colors", type=int, choices=[0, 1], default=0)
 parser.add_argument("-pooling", choices=['avg', 'max'], default='max')
 parser.add_argument("-model_file", type=str, default='models/vgg19-d01eb7cb.pth')
 parser.add_argument("-disable_check", action='store_true')
-parser.add_argument("-backend", choices=['nn', 'cudnn', 'mkl', 'mkldnn', 'openmp', 'mkl,cudnn', 'cudnn,mkl'], default='nn')
+parser.add_argument("-backend", choices=['nn', 'cudnn', 'mkl', 'mkldnn', 'openmp', 'mkl,cudnn', 'cudnn,mkl', 'mps'], default='nn')
 parser.add_argument("-cudnn_autotune", action='store_true')
 parser.add_argument("-seed", type=int, default=-1)
 
@@ -194,7 +194,8 @@ def main():
     if params.seed >= 0:
         torch.manual_seed(params.seed)
         torch.cuda.manual_seed_all(params.seed)
-        torch.backends.cudnn.deterministic=True
+        if not torch.mps.is_available():
+            torch.backends.cudnn.deterministic=True
     if params.init == 'random':
         B, C, H, W = content_image.size()
         img = torch.randn(C, H, W).mul(0.001).unsqueeze(0).type(dtype)
@@ -297,6 +298,8 @@ def setup_gpu():
             torch.backends.mkl.enabled = True
         elif 'mkldnn' in params.backend:
             raise ValueError("MKL-DNN is not supported yet.")
+        elif 'mps' in params.backend:
+            torch.backends.mps.enabled = True
         elif 'openmp' in params.backend:
             torch.backends.openmp.enabled = True
 
@@ -309,6 +312,8 @@ def setup_gpu():
         if 'c' in str(devices[0]).lower():
             backward_device = "cpu"
             setup_cuda(), setup_cpu()
+        elif torch.backends.mps.is_available():
+            backward_device = "mps:" + devices[0]
         else:
             backward_device = "cuda:" + devices[0]
             setup_cuda()
@@ -333,6 +338,7 @@ def setup_multi_device(net):
       "The number of -multidevice_strategy layer indices minus 1, must be equal to the number of -gpu devices."
 
     new_net = ModelParallel(net, params.gpu, params.multidevice_strategy)
+    new_net.to(torch.device("mps"))
     return new_net
 
 
