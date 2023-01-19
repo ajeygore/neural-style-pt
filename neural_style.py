@@ -302,10 +302,6 @@ def setup_gpu():
 
     multidevice = False
 
-    if torch.backends.mps.is_available():
-        torch.device("mps")
-        return torch.FloatTensor, False, str("mps:" + params.gpu)
-
     if "," in str(params.gpu):
         devices = params.gpu.split(',')
         multidevice = True
@@ -319,8 +315,13 @@ def setup_gpu():
         dtype = torch.FloatTensor
 
     elif "c" not in str(params.gpu).lower():
-        setup_cuda()
-        dtype, backward_device = torch.cuda.FloatTensor, "cuda:" + str(params.gpu)
+
+        if torch.backends.mps.is_available():
+            torch.device("mps")
+            dtype, backward_device = torch.FloatTensor, "mps:" + str(params.gpu)
+        else:
+            setup_cuda()
+            dtype, backward_device = torch.cuda.FloatTensor, "cuda:" + str(params.gpu)
     else:
         setup_cpu()
         dtype, backward_device = torch.FloatTensor, "cpu"
