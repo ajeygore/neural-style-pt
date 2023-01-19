@@ -301,6 +301,11 @@ def setup_gpu():
             torch.backends.openmp.enabled = True
 
     multidevice = False
+
+    if torch.backends.mps.is_available():
+        torch.device("mps")
+        return torch.FloatTensor, False, str("mps:" + params.gpu)
+
     if "," in str(params.gpu):
         devices = params.gpu.split(',')
         multidevice = True
